@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 # 指向 fav_bili 所在的 Git 仓库
 # Cargo 会克隆这个仓库，并找到其中的 fav_bili crate
-fav_bili = { git = "https://github.com/cap153/fav.git" }
+fav_bili = { git = "https://github.com/cap153/fav.git", package = "fav_bili"}
 
 # 其他依赖，如 clap, toml, lettre, tokio 等 ...
 anyhow = "1.0"
