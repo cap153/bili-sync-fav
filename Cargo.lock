@@ -278,6 +278,7 @@ dependencies = [
  "anyhow",
  "chrono",
  "clap",
+ "dotenv",
  "env_logger",
  "fav_bili",
  "lettre",

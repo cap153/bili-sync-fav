@@ -3,12 +3,13 @@ use chrono::{DateTime, Local};
 use clap::Parser;
 use lettre::transport::smtp::authentication::Credentials;
 use lettre::{Message, SmtpTransport, Transport};
-use log::{error, warn};
+use log::{error, info, warn};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::time::{Duration};
+use std::time::Duration;
 
+// --- 数据结构 (保持不变) ---
 #[derive(Deserialize, Debug)]
 struct Config {
     interval: u64,
@@ -39,7 +40,6 @@ struct Smtp {
     recipient_email: String,
 }
 
-// --- 命令行参数 ---
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
@@ -47,20 +47,221 @@ struct Args {
     config: PathBuf,
 }
 
-// --- 邮件通知函数 ---
+struct DirectoryGuard {
+    original_path: PathBuf,
+}
+
+impl DirectoryGuard {
+    /// 创建一个新的 Guard，它会保存当前目录，然后切换到新目录。
+    fn new<P: AsRef<Path>>(new_path: P) -> Result<Self> {
+        let original_path = std::env::current_dir()?;
+        std::env::set_current_dir(new_path.as_ref())
+            .with_context(|| format!("无法切换到目录: {:?}", new_path.as_ref().as_os_str()))?;
+        Ok(Self { original_path })
+    }
+}
+
+impl Drop for DirectoryGuard {
+    /// 当 DirectoryGuard 被销毁时，这个方法会被自动调用。
+    fn drop(&mut self) {
+        // 尝试切换回原始目录，如果失败则记录一个警告。
+        if let Err(e) = std::env::set_current_dir(&self.original_path) {
+            warn!("无法切换回原始目录 {:?}: {}", self.original_path, e);
+        }
+    }
+}
+
+// --- 程序入口 ---
+#[tokio::main]
+async fn main() -> Result<()> {
+    // 在初始化 logger 之前加载 .env 文件
+    // .ok() 表示即使 .env 文件不存在也不会报错
+    dotenv::dotenv().ok(); 
+
+    // 初始化日志记录器
+    env_logger::init();
+
+    // 将主要逻辑委托给 run 函数
+    // 这样 main 函数只负责启动和最终的错误处理
+    if let Err(e) = run().await {
+        error!("程序因严重错误而终止: {:?}", e);
+        // 确保非零退出码
+        std::process::exit(1);
+    }
+
+    Ok(())
+}
+
+/// 应用程序的主逻辑函数
+async fn run() -> Result<()> {
+    let args = Args::parse();
+
+    info!("正在从 {:?} 读取配置...", &args.config);
+    let config_content = std::fs::read_to_string(&args.config)
+        .with_context(|| format!("无法读取配置文件: {:?}", &args.config))?;
+    let config: Config =
+        toml::from_str(&config_content).with_context(|| "解析 config.toml 文件失败")?;
+
+    // 步骤1: 登录B站
+    login_bilibili(&config).await?;
+
+    // 步骤2: 准备工作目录
+    prepare_directories(&config).await?;
+
+    // 步骤3: 进入主同步循环
+    run_sync_loop(&config).await?;
+
+    Ok(())
+}
+
+// --- 核心功能函数 ---
+
+/// 使用配置中的Cookie登录B站
+async fn login_bilibili(config: &Config) -> Result<()> {
+    info!("正在使用Cookie登录B站...");
+    let cookie_str = format!(
+        "SESSDATA={};bili_jct={};buvid3={};DedeUserID={};ac_time_value={}",
+        config.credential.sessdata,
+        config.credential.bili_jct,
+        config.credential.buvid3,
+        config.credential.dedeuserid,
+        config.credential.ac_time_value,
+    );
+
+    if let Err(e) = fav_bili::usecookies(cookie_str).await {
+        return Err(handle_critical_error(
+            config,
+            e,
+            "【紧急】BiliBili 登录失败提醒",
+            "初次使用Cookie登录失败，请检查 config.toml 中的 Cookie 是否正确或已过期。",
+        ));
+    }
+    info!("登录成功！");
+    Ok(())
+}
+
+/// 根据配置创建所有需要的收藏夹目录
+async fn prepare_directories(config: &Config) -> Result<()> {
+    info!("正在初始化本地目录和状态文件...");
+    for dir_str in config.favorite_list.values() {
+        let dir_path = Path::new(dir_str);
+        std::fs::create_dir_all(dir_path).with_context(|| format!("创建目录失败: {}", dir_str))?;
+    }
+    info!("目录初始化完成！");
+    Ok(())
+}
+
+/// 主同步循环，定期检查和下载视频
+async fn run_sync_loop(config: &Config) -> Result<()> {
+    // 首次运行时，先进行一次全局元数据拉取
+    info!("正在进行初次全局元数据拉取...");
+    fav_bili::fetch(false)
+        .await
+        .context("全局元数据拉取(fetch)失败")?;
+    info!("==================================================");
+
+    loop {
+        // 在每一轮循环开始前，检查Cookie状态
+        check_cookie_and_notify(config).await?;
+
+        info!("开始新一轮的视频下载检查...");
+        for (id_str, dir_str) in &config.favorite_list {
+            let fav_id = id_str
+                .parse::<i64>()
+                .with_context(|| format!("无效的收藏夹ID: {}", id_str))?;
+
+            let dir_path = Path::new(dir_str);
+
+            // 调用专门处理单个收藏夹的函数
+            if let Err(e) = process_favorite_list(fav_id, dir_path).await {
+                error!("处理收藏夹 {} ({}) 时发生错误: {:?}", fav_id, dir_str, e);
+            }
+        }
+
+        info!("==================================================");
+        info!("所有收藏夹处理完毕，bili-sync-fav将休眠 {} 秒...", config.interval);
+        tokio::time::sleep(Duration::from_secs(config.interval)).await;
+    }
+}
+
+/// 处理单个收藏夹的同步逻辑
+async fn process_favorite_list(fav_id: i64, path: &Path) -> Result<()> {
+    info!("--- 正在处理收藏夹: {} ({:?}) ---", fav_id, path);
+
+    // 创建 Guard。如果切换目录失败，`?` 会立即返回错误。
+    // `_guard` 这个变量名表示我们只关心它的生命周期，不直接使用它。
+    let _guard = DirectoryGuard::new(path)?;
+
+    info!("  -> 激活收藏夹 {}", fav_id);
+    fav_bili::activate_set(fav_id).await?;
+
+    info!("  -> 检查更新...");
+    fav_bili::fetch(false).await?;
+
+    info!("  -> 拉取视频...");
+    fav_bili::pull().await?;
+
+    info!("  -> 取消激活收藏夹 {}", fav_id);
+    fav_bili::deactivate_set(fav_id).await?;
+    
+    info!("--- 收藏夹 {} 处理完毕 ---", fav_id);
+    Ok(())
+}
+
+// --- 辅助与通知函数 ---
+
+/// 检查Cookie有效性，如果失败则发送通知并返回错误
+async fn check_cookie_and_notify(config: &Config) -> Result<()> {
+    info!("正在检查Cookie状态...");
+    if let Err(e) = fav_bili::check_all().await {
+        return Err(handle_critical_error(
+            config,
+            e,
+            "【紧急】BiliBili Cookie 过期提醒",
+            "B站Cookie已过期或验证失败，bili-sync-fav已停止运行。请立即更新Cookie。",
+        ));
+    }
+    info!("Cookie验证通过。");
+    Ok(())
+}
+
+/// 统一处理严重错误：记录日志、发送邮件，并返回一个格式化的Error
+fn handle_critical_error(
+    config: &Config,
+    error: anyhow::Error,
+    subject: &str,
+    context_msg: &str,
+) -> anyhow::Error {
+    let now: DateTime<Local> = Local::now();
+    let formatted_time = now.format("%Y-%m-%d %H:%M:%S").to_string();
+
+    let error_msg = format!(
+        "{}\n错误详情: {}\n错误时间: {}",
+        context_msg, error, formatted_time
+    );
+
+    error!("{}", error_msg);
+
+    if let Err(e_mail) = send_notification_email(&config.smtp, subject, &error_msg) {
+        error!("发送邮件通知失败: {:?}", e_mail);
+    }
+
+    anyhow::anyhow!(error_msg)
+}
+
+/// 发送邮件通知 (基本保持不变，稍作调整)
 fn send_notification_email(smtp_config: &Smtp, subject: &str, body: &str) -> Result<()> {
-    // 检查 SMTP 密码是否配置，如果没有则不发送
     let Some(password) = smtp_config.sender_password.as_deref() else {
         warn!("SMTP 的 SENDER_PASSWORD 未配置，跳过邮件通知。");
         return Ok(());
     };
 
-    if password.is_empty() || password == "null" {
+    if password.is_empty() || password.eq_ignore_ascii_case("null") {
         warn!("SMTP 的 SENDER_PASSWORD 为空或 'null'，跳过邮件通知。");
         return Ok(());
     }
 
-    println!("正在尝试发送邮件通知...");
+    info!("正在尝试发送邮件通知...");
 
     let email = Message::builder()
         .from(format!("BiliBili下载助手 <{}>", smtp_config.sender_email).parse()?)
@@ -68,184 +269,21 @@ fn send_notification_email(smtp_config: &Smtp, subject: &str, body: &str) -> Res
         .subject(subject)
         .body(String::from(body))?;
 
-    // 从 SMTP URL 中解析出 host
-    let host_part = smtp_config
+    let smtp_host = smtp_config
         .url
         .strip_prefix("smtps://")
         .or_else(|| smtp_config.url.strip_prefix("smtp://"))
-        .unwrap_or(&smtp_config.url);
-
-    let smtp_host = host_part.split(':').next().unwrap_or(host_part);
-
-    if smtp_host.is_empty() {
-        return Err(anyhow::anyhow!(
-            "无法从 SMTP_URL '{}' 中解析出主机名",
-            smtp_config.url
-        ));
-    }
+        .and_then(|s| s.split(':').next())
+        .filter(|s| !s.is_empty())
+        .ok_or_else(|| anyhow::anyhow!("无法从 SMTP_URL '{}' 中解析出主机名", smtp_config.url))?;
 
     let creds = Credentials::new(smtp_config.sender_email.clone(), password.to_string());
-
-    // 创建 SMTP transport
     let mailer = SmtpTransport::relay(smtp_host)?.credentials(creds).build();
 
-    // 发送邮件
-    match mailer.send(&email) {
-        Ok(_) => {
-            println!("邮件通知发送成功！");
-            Ok(())
-        }
-        Err(e) => {
-            Err(e).with_context(|| "邮件通知发送失败！请检查 config.toml 中的 SMTP 配置和网络。")
-        }
-    }
-}
+    mailer
+        .send(&email)
+        .with_context(|| "邮件通知发送失败！请检查 SMTP 配置和网络。")?;
 
-// --- 新的 Cookie 检查函数，使用库调用 ---
-async fn check_cookie_and_notify(config: &Config) -> Result<()> {
-    println!("正在检查Cookie状态...");
-    // 直接调用库函数，不再解析输出了！
-    // 如果函数返回 Ok，说明检查通过。如果返回 Err，说明失败。
-    match fav_bili::check_all().await {
-        Ok(_) => {
-            println!("Cookie验证通过，即将开始下一轮检查。");
-            println!("==================================================");
-            Ok(())
-        }
-        Err(e) => {
-            // 获取当前的本地时间
-            let now: DateTime<Local> = Local::now();
-            // 格式化时间为 "年-月-日 时:分:秒"
-            let formatted_time = now.format("%Y-%m-%d %H:%M:%S").to_string();
-
-            let error_msg = format!(
-                "B站Cookie已过期或验证失败，脚本已停止运行。请立即更新 {} 并重新运行脚本。\n错误详情: {}\n错误时间: {}",
-                "config.toml", e, formatted_time // <-- 使用格式化后的时间
-            );
-            error!("{}", error_msg);
-
-            if let Err(e_mail) = send_notification_email(
-                &config.smtp,
-                "【紧急】BiliBili Cookie 过期提醒",
-                &error_msg,
-            ) {
-                error!("{:?}", e_mail);
-            }
-
-            Err(anyhow::anyhow!(error_msg))
-        }
-    }
-}
-
-// 使用 tokio::main 宏，因为 fav_bili 都是 async 函数
-#[tokio::main]
-async fn main() -> Result<()> {
-    env_logger::init();
-
-    let args = Args::parse();
-    let original_path = std::env::current_dir()?; // 保存原始工作目录
-
-    println!("正在从 {:?} 读取配置...", &args.config);
-    let config_content = std::fs::read_to_string(&args.config)
-        .with_context(|| format!("无法读取配置文件: {:?}", &args.config))?;
-    let config: Config =
-        toml::from_str(&config_content).with_context(|| "解析 config.toml 文件失败")?;
-
-    // --- 登录B站 (库调用) ---
-    println!("正在使用Cookie登录...");
-    let cookie_str = format!(
-        "SESSDATA={};bili_jct={};buvid3={};DedeUserID={};ac_time_value={}", // 注意格式变为分号或空格分隔
-        config.credential.sessdata,
-        config.credential.bili_jct,
-        config.credential.buvid3,
-        config.credential.dedeuserid,
-        config.credential.ac_time_value,
-    );
-    // 直接调用 usecookies 函数
-    if let Err(e) = fav_bili::usecookies(cookie_str).await {
-        // 登录失败，构造错误信息
-        // 获取当前的本地时间
-        let now: DateTime<Local> = Local::now();
-        // 格式化时间为 "年-月-日 时:分:秒"
-        let formatted_time = now.format("%Y-%m-%d %H:%M:%S").to_string();
-        let error_msg = format!(
-        "初次使用Cookie登录失败，脚本已停止运行。\n请检查 config.toml 中的 Cookie 是否正确或已过期。\n错误详情: {}\n错误时间: {}",
-        e, formatted_time
-    );
-        error!("{}", error_msg); // 使用 log 记录
-
-        // 发送邮件通知
-        if let Err(e_mail) = send_notification_email(
-            &config.smtp,
-            "【紧急】BiliBili 登录失败提醒", // 使用不同的主题
-            &error_msg,
-        ) {
-            error!("发送邮件通知失败: {:?}", e_mail);
-        }
-
-        // 返回最终的错误，终止程序
-        return Err(anyhow::anyhow!(error_msg));
-    }
-
-    // 初始 Cookie 检查
-    check_cookie_and_notify(&config).await?;
-
-    println!("登录成功，正在全局拉取元数据...");
-    // 直接调用 fetch 函数
-    fav_bili::fetch(false).await.context("全局 fetch 失败")?; // prune=false
-    println!("==================================================");
-
-    // ---  创建目录 ---
-    println!("正在初始化本地目录和状态文件...");
-    for (_id, dir_str) in &config.favorite_list {
-        // println!("处理收藏夹 ID: {} -> 目录: {}", id, dir_str);
-        let dir_path = Path::new(dir_str);
-        std::fs::create_dir_all(dir_path)?;
-    }
-    println!("初始化完成！");
-    println!("==================================================");
-
-    // --- 循环检查和下载 ---
-    loop {
-        println!("开始新一轮的视频下载检查...");
-        for (id_str, dir_str) in &config.favorite_list {
-            let fav_id = id_str
-                .parse::<i64>()
-                .with_context(|| format!("无效的收藏夹ID: {}", id_str))?;
-            println!("--- 正在处理收藏夹: {} ({}) ---", fav_id, dir_str);
-
-            let dir_path = Path::new(dir_str);
-
-            // 切换工作目录，模拟 `(cd "$dir"; ...)`
-            std::env::set_current_dir(dir_path)
-                .with_context(|| format!("无法切换到目录: {:?}", dir_path))?;
-
-            // 使用库调用，在当前（已切换的）目录中执行操作
-            println!("  -> 激活收藏夹 {}", fav_id);
-            fav_bili::activate_set(fav_id).await?;
-
-            println!("  -> 检查更新...");
-            fav_bili::fetch(false).await?; // prune=false
-
-            println!("  -> 拉取视频...");
-            fav_bili::pull().await?;
-
-            println!("  -> 取消激活收藏夹 {}", fav_id);
-            fav_bili::deactivate_set(fav_id).await?;
-
-            // 切换回原始工作目录，保持状态一致性
-            std::env::set_current_dir(&original_path)?;
-
-            println!("--- 收藏夹 {} 处理完毕 ---", fav_id);
-        }
-
-        println!("==================================================");
-        println!("所有收藏夹处理完毕，脚本将休眠 {} 秒...", config.interval);
-        tokio::time::sleep(Duration::from_secs(config.interval)).await;
-
-        if let Err(e) = check_cookie_and_notify(&config).await {
-            error!("致命错误，程序退出: {:?}", e);
-            return Err(e);
-        }
-    }
+    info!("邮件通知发送成功！");
+    Ok(())
 }
