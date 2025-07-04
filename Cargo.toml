@@ -1,0 +1,20 @@
+[package]
+name = "bili-sync-fav"
+version = "2.0.0"
+edition = "2021"
+
+[dependencies]
+# 指向 fav_bili 所在的 Git 仓库
+# Cargo 会克隆这个仓库，并找到其中的 fav_bili crate
+fav_bili = { git = "https://github.com/cap153/fav.git" }
+
+# 其他依赖，如 clap, toml, lettre, tokio 等 ...
+anyhow = "1.0"
+clap = { version = "4.4", features = ["derive"] }
+env_logger = "0.10"
+lettre = { version = "0.11", default-features = false, features = ["smtp-transport", "builder", "tokio1-rustls-tls"] }
+log = "0.4"
+serde = { version = "1.0", features = ["derive"] }
+tokio = { version = "1", features = ["full"] }
+toml = "0.8"
+chrono = { version = "0.4", features = ["serde"] }
