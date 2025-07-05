@@ -1,3 +1,8 @@
+-[x] 支持登陆失败和 Cookie 过期发送邮件提醒
+-[x] 支持收藏夹视频定时检测下载
+-[x] 为 Linux 平台提供了立即可用的 Docker 镜像
+-[x] 使用数据库保存媒体信息，避免对同个视频的多次请求
+
 # 配置文件
 
 ## Cookie信息
@@ -53,6 +58,7 @@ RECIPIENT_EMAIL="test@qq.com"
 
 ## SMTP配置
 
+> [!NOTE]
 > 配置好SMTP可以在登陆失败或cookie过期时发邮件提醒，这里以开启163邮箱的SMTP为例
 
 登陆163邮箱，点击设置，选择`POP3/SMTP/IMAP`
@@ -67,7 +73,7 @@ RECIPIENT_EMAIL="test@qq.com"
 
 # docker运行
 
-> 容器内部的`/app`目录是工作目录，可以把它映射到配置文件的路径，运行后会创建`.fav`文件夹，里面有数据库文件，记录了已经下载的视频，如果想全部视频重新下载删除该`.fav`文件夹即可
+> 容器内部的`/app`目录是工作目录，可以把它映射到配置文件所在的目录，运行后会创建`.fav`文件夹，里面有数据库文件，记录了已经下载的视频，如果想全部视频重新下载删除该`.fav`文件夹即可
 
 ## Compose运行
 
@@ -106,7 +112,7 @@ docker run -it --restart=always --name bili-sync-fav -v <你希望存储程序�
 ## 源码运行
 
 ```bash
-# 克隆仓库
+# 下载最新源码
 git clone --depth 1 https://github.com/cap153/bili-sync-fav
 # 进入项目目录
 cd bili-sync-fav
@@ -116,8 +122,10 @@ RUST_LOG="bili_sync_fav=info,warn" cargo run --release
 
 ## 源码编译运行
 
+我在[release](https://github.com/cap153/bili-sync-fav/releases)上传了我编译的可执行文件`bili-sync-fav`(archlinux,amd64,gun)，可以直接下载该文件使用，如果无法正常运行，可以尝试下面的步骤手动编译
+
 ```bash
-# 克隆仓库
+# 下载最新源码
 git clone --depth 1 https://github.com/cap153/bili-sync-fav
 # 进入项目目录
 cd bili-sync-fav
@@ -130,7 +138,8 @@ cargo build --release
 ```bash
 # 安装到环境变量
 cp target/release/bili-sync-fav /usr/local/bin
-# 此时可以在任意路径运行，-c参数可以指定配置文件
+# 配置日志等级以显示详细信息
+export RUST_LOG="bili_sync_fav=info,warn" 
+# 此时该文件可以在任意路径运行，-c参数可以指定配置文件
 bili-sycn-fav -c <配置文件>
 ```
-
