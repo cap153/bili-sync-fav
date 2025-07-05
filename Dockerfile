@@ -26,6 +26,8 @@ ENV PKG_CONFIG_PATH="/usr/local/lib/pkgconfig"
 COPY . .
 # 然后直接构建
 RUN cargo build --release --locked
+# 剥离二进制文件中的调试符号以减小可执行文件体积
+RUN strip -s target/release/bili-sync-fav
 
 # ==================================
 # STAGE 2: The Runtime 
@@ -39,6 +41,7 @@ RUN \
     apt-get install -y --no-install-recommends \
         ca-certificates libsqlite3-0 libx264-164 libx265-199 libvpx7 \
         libfdk-aac2 libmp3lame0 libopus0 libssl3 \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 # 复制 builder 中 /usr/local/lib 里的内容，这是我们自己编译的
