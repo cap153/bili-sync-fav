@@ -53,7 +53,7 @@ RECIPIENT_EMAIL="test@qq.com"
 
 ## SMTP配置
 
-> 配置好SMTP可以在登陆失败或cookie过期时发邮件提醒
+> 配置好SMTP可以在登陆失败或cookie过期时发邮件提醒，这里以开启163邮箱的SMTP为例
 
 登陆163邮箱，点击设置，选择`POP3/SMTP/IMAP`
 
