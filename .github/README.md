@@ -2,7 +2,7 @@
 
 ## Cookie信息
 
-当前版本的默认示例文件如下：
+当前版本的默认示例文件`config.toml`如下：
 
 ```toml
 interval = 1200
@@ -57,7 +57,7 @@ services:
       - ${你希望存储程序配置的目录}:/app
       # 还需要有视频下载位置
       # 这些目录不是固定的，只需要确保此处的挂载与 bili-sync-fav 的配置文件相匹配
-      - ${视频下载的位置}:${配置文件中的路径}
+      - ${视频想保存的路径}:${配置文件写的收藏夹路径}
 ```
 
 
@@ -71,7 +71,7 @@ cd bili-sync-fav
 # 构建docker镜像
 docker build -t bili-sync-fav ./
 # 创建容器并运行，自行修改相关参数
-docker run -it --restart=always --name bili-sync-fav  -v <配置文件路径>:/app -v <视频想保存的路径>:<配置文件写的收藏夹路径> bili-sync-fav
+docker run -it --restart=always --name bili-sync-fav -v <你希望存储程序配置的目录>:/app -v <视频想保存的路径>:<配置文件写的收藏夹路径> bili-sync-fav
 ```
 
 # 主机运行
@@ -103,7 +103,7 @@ cargo build --release
 ```bash
 # 安装到环境变量
 cp target/release/bili-sync-fav /usr/local/bin
-# 此时可以在任意路径运行，-c参数可以指定配置文件路径
-bili-sycn-fav -c <配置文件路径>
+# 此时可以在任意路径运行，-c参数可以指定配置文件
+bili-sycn-fav -c <配置文件>
 ```
 
