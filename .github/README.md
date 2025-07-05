@@ -49,13 +49,13 @@ RECIPIENT_EMAIL="test@qq.com"
 
 ## 收藏夹id获取方法
 
-[什么值得买的文章有详细介绍](https://post.smzdm.com/p/a4xl63gk/)，打开收藏夹，点击收藏夹封面
-
-![image](https://github.com/user-attachments/assets/02efefe9-0a3a-46d6-8646-a6aa462d62c2)
-
-点击收藏夹旁边的`播放全部`按钮，浏览器可以在地址栏看到“mlxxxxxxx”，只需要后面数字即可（不需要“ml“）
+打开想要下载的收藏夹，点击**收藏夹封面旁边**的`播放全部`按钮，
 
 ![image](https://github.com/user-attachments/assets/a8a39d76-611d-40cf-9474-8193e26ae3ec)
+
+新打开的标签页可以在地址栏看到“mlxxxxxxx”，只需要后面数字即可（不需要“ml“）
+
+![image](https://github.com/user-attachments/assets/59921d0c-96ee-4fa0-842e-a757c603ccdd)
 
 ## SMTP配置
 
