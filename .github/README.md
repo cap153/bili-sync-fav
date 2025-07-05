@@ -1,4 +1,4 @@
-- [x] 支持登陆失败和 Cookie 过期发送邮件提醒
+- [x] 支持登陆失败或 Cookie 过期发送邮件提醒
 - [x] 支持收藏夹视频定时检测下载
 - [x] 为 Linux 平台提供了立即可用的 Docker 镜像
 - [x] 使用数据库保存媒体信息，避免对同个视频的多次请求
@@ -74,6 +74,11 @@ RECIPIENT_EMAIL="test@qq.com"
 # docker运行
 
 > 容器内部的`/app`目录是工作目录，可以把它映射到配置文件所在的目录，运行后会创建`.fav`文件夹，里面有数据库文件，记录了已经下载的视频，如果想全部视频重新下载删除该`.fav`文件夹即可
+
+```bash
+# 创建容器并运行，自行修改相关参数
+docker run -it --restart=always --name bili-sync-fav -v <你希望存储程序配置的目录>:/app -v <视频想保存的路径>:<配置文件写的收藏夹路径> bili-sync-fav
+```
 
 ## Compose运行
 
