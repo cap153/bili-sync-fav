@@ -25,11 +25,11 @@ ac_time_value = ""
 # 这是邮件的配置(以163为例)
 [SMTP]
 SMTP_URL="smtps://smtp.163.com:465"
-# 你的邮箱信息
+# 开启了SMTP的邮箱
 SENDER_EMAIL="test@163.com"
 # 重要：这里使用授权码，而不是邮箱密码！
 SENDER_PASSWORD="" 
-# 收件人信息
+# 收件的邮箱
 RECIPIENT_EMAIL="test@qq.com"
 ```
 
@@ -55,7 +55,15 @@ RECIPIENT_EMAIL="test@qq.com"
 
 > 配置好SMTP可以在登陆失败或cookie过期时发邮件提醒
 
-登陆163邮箱，点击设置，选择POP3/SMTP/IMAP
+登陆163邮箱，点击设置，选择`POP3/SMTP/IMAP`
+
+![image](https://github.com/user-attachments/assets/1d27d05a-04d4-4901-b135-9000e7df2f6e)
+
+点击`POP3/SMTP服务`旁边的开启，顺着步骤一步一步走就行，发送短信后会显示授权码，**记住这个授权码，这个是在你写代码发邮件时代替你邮箱密码的**
+
+![image](https://github.com/user-attachments/assets/bf73a8fc-1476-41ce-8afe-07ae296b7b6d)
+
+把授权码填写到配置文件`SMTP`下的**SENDER_PASSWORD**的引号里面
 
 # docker运行
 
@@ -79,7 +87,6 @@ services:
       # 这些目录不是固定的，只需要确保此处的挂载与 bili-sync-fav 的配置文件相匹配
       - ${视频想保存的路径}:${配置文件写的收藏夹路径}
 ```
-
 
 ## Dockerfile编译运行
 
