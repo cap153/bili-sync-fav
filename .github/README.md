@@ -53,9 +53,9 @@ RECIPIENT_EMAIL="test@qq.com"
 
 ![image](https://github.com/user-attachments/assets/02efefe9-0a3a-46d6-8646-a6aa462d62c2)
 
-浏览器可以看到“mlxxxxxxx”，只需要后面数字即可（不需要“ml“）
+点击收藏夹旁边的`播放全部`按钮，浏览器可以在地址栏看到“mlxxxxxxx”，只需要后面数字即可（不需要“ml“）
 
-![image](https://github.com/user-attachments/assets/270c7f2f-b1b1-49a1-a450-a133f0d459fa)
+![image](https://github.com/user-attachments/assets/a8a39d76-611d-40cf-9474-8193e26ae3ec)
 
 ## SMTP配置
 
