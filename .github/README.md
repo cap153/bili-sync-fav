@@ -4,19 +4,33 @@
 
 当前版本的默认示例文件`config.toml`如下：
 
-```toml
-interval = 1200
+```bash
+# 这是时间间隔，单位是秒
+interval = 43200
 
+# 这是用于登陆的Cookie信息
 [credential]
 sessdata = ""
 bili_jct = ""
 buvid3 = ""
 dedeuserid = ""
+# 打开开发者工具，进入控制台，输入window.localStorage.ac_time_value即可获取值
 ac_time_value = ""
 
+# 这是收藏夹的id和对应视频在本地下载的目录
 [favorite_list]
 <收藏夹id> = "<保存的路径>"
 <收藏夹id> = "<保存的路径>"
+
+# 这是邮件的配置(以163为例)
+[SMTP]
+SMTP_URL="smtps://smtp.163.com:465"
+# 你的邮箱信息
+SENDER_EMAIL="test@163.com"
+# 重要：这里使用授权码，而不是邮箱密码！
+SENDER_PASSWORD="" 
+# 收件人信息
+RECIPIENT_EMAIL="test@qq.com"
 ```
 
 - `interval`:表示程序每次执行扫描下载的间隔时间，单位为秒。
@@ -36,6 +50,12 @@ ac_time_value = ""
 浏览器可以看到“mlxxxxxxx”，只需要后面数字即可（不需要“ml“）
 
 ![image](https://github.com/user-attachments/assets/270c7f2f-b1b1-49a1-a450-a133f0d459fa)
+
+## SMTP配置
+
+> 配置好SMTP可以在登陆失败或cookie过期时发邮件提醒
+
+登陆163邮箱，点击设置，选择POP3/SMTP/IMAP
 
 # docker运行
 
