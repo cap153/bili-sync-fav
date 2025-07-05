@@ -1,5 +1,6 @@
 #!/bin/bash
 
+# 这个脚本的功能和项目的功能一样，分别调用yq解析toml和fav下载视频，性能可能差一点
 # 脚本出错时立即退出
 set -e
 
@@ -8,6 +9,7 @@ set -e
 # https://github.com/mikefarah/yq
 curl -L "https://github.com/mikefarah/yq/releases/download/v4.45.4/yq_linux_amd64" -o yq_linux_amd64
 chmod +x ./yq_linux_amd64
+# fav_bili需要自行编译并放到脚本同一目录
 chmod +x ./fav_bili
 
 CONFIG_FILE="config.toml"
@@ -102,21 +104,8 @@ echo "正在初始化本地目录和状态文件..."
 # 使用 yq 读取所有收藏夹ID
 $YQ_EXEC '.favorite_list | to_entries | .[] | [.key, .value] | @tsv' "$CONFIG_FILE" | while IFS=$'\t' read -r id dir; do
     echo "处理收藏夹 ID: $id -> 目录: $dir"
-    
     # 创建目录，-p 选项确保如果目录已存在也不会报错
     mkdir -p "$dir"
-    
-    # 进入目录并创建软链接
-    (
-        cd "$dir"
-        # 检查软链接是否已存在，不存在则创建
-        if [ ! -L ".fav" ]; then
-            echo "  -> 在 $dir 中创建 .fav 软链接..."
-            ln -s ../.fav .
-        else
-            echo "  -> .fav 软链接已存在，跳过创建。"
-        fi
-    )
 done
 echo "初始化完成！"
 echo "=================================================="
