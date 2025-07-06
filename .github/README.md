@@ -4,6 +4,8 @@
 - [x] 为 Linux 平台提供了立即可用的 Docker 镜像
 - [x] 使用数据库保存媒体信息，避免对同个视频的多次请求
 
+[视频演示](https://www.bilibili.com/video/BV1183ozEEUG)
+
 # 配置文件
 
 ## Cookie信息
