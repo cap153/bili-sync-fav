@@ -133,7 +133,7 @@ RUST_LOG="bili_sync_fav=info,warn" cargo run --release
 
 ## 源码编译运行
 
-我在[release](https://github.com/cap153/bili-sync-fav/releases)上传了我编译的可执行文件`bili-sync-fav`(archlinux,amd64,gun)，可以直接下载该文件使用，如果无法正常运行，可以尝试下面的步骤手动编译
+我在[release](https://github.com/cap153/bili-sync-fav/releases)上传了我在archlinux编译的可执行文件`bili-sync-fav`(amd64,gun)，可以直接下载该文件使用，如果无法正常运行或使用其他平台，可以尝试下面的步骤手动编译
 
 ```bash
 # 下载最新源码
