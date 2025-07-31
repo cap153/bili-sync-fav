@@ -41,13 +41,13 @@ RECIPIENT_EMAIL="test@qq.com"
 
 - `interval`:表示程序每次执行扫描下载的间隔时间，单位为秒。
 - `[credential]`:哔哩哔哩账号的身份凭据，请参考[凭据获取流程](https://nemo2011.github.io/bilibili-api/#/get-credential)并对应填写至配置文件中，推荐使用匿名窗口获取，避免潜在的冲突。
-- `[favorite_list]`:你想要下载的收藏夹与想要保存的位置。id的获取参考[收藏夹id获取方法](收藏夹id获取方法)，简单示例：
+- `[favorite_list]`:你想要下载的收藏夹与想要保存的位置。id的获取参考[收藏夹id获取方法](#收藏夹id获取方法)，简单示例：
 
 ```bash
 3115878158 = "/home/amtoaer/Downloads/bili-sync/测试收藏夹"
 ```
 
-- `[SMTP]`:需要填写开启了SMTP的邮箱地址和[授权码](SMTP授权码获取方法)用于发送邮件，以及用于接收邮件的邮箱。SMTP仅测试了163邮箱，如果想尝试其他邮箱，请自行修改`SMTP_URL`等相关内容。
+- `[SMTP]`:需要填写开启了SMTP的邮箱地址和[授权码](#SMTP授权码获取方法)用于发送邮件，以及用于接收邮件的邮箱。SMTP仅测试了163邮箱，如果想尝试其他邮箱，请自行修改`SMTP_URL`等相关内容。
 
 ## 收藏夹id获取方法
 
