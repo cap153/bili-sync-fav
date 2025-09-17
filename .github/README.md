@@ -118,6 +118,13 @@ docker run -it --restart=always --name bili-sync-fav -v <你希望存储程序�
 
 # 主机运行
 
+> [!IMPORTANT]
+> 如果使用debian，需要安装ffmpeg的核心库(或者直接`sudo apt install ffmpeg`安装完整的ffmpeg)
+
+```bash
+sudo apt install libavcodec-extra61 libavformat-extra61 libswscale8
+```
+
 ## 源码运行
 
 ```bash
@@ -156,7 +163,7 @@ bili-sycn-fav -c <配置文件>
 ## 用户级service运行
 
 > [!TIP]
-> 提前把编译好的`bili-sycn-fav`执行文件放到`/usr/local/bin`这类目录
+> 提前把编译好的`bili-sycn-fav`执行文件放到`~/.local/bin`或`~/.cargo/bin`这类目录
 
 创建配置文件 `~/.config/bili-sync-fav/config.toml` 并写入 [配置](#示例配置)
 
@@ -178,7 +185,7 @@ Documentation=https://github.com/cap153/bili-sync-fav
 
 [Service]
 Type=simple
-ExecStart=bili-sync-fav -c /home/%u/.config/bili-sync-fav/config.toml
+ExecStart=%h/.local/bin/bili-sync-fav -c %h/.config/bili-sync-fav/config.toml
 Restart=no
 
 [Install]
