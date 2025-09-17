@@ -153,6 +153,57 @@ export RUST_LOG="bili_sync_fav=info,warn"
 bili-sycn-fav -c <配置文件>
 ```
 
+## 用户级service运行
+
+> [!TIP]
+> 提前把编译好的`bili-sycn-fav`执行文件放到`/usr/local/bin`这类目录
+
+创建配置文件 `~/.config/bili-sync-fav/config.toml` 并写入 [配置](#示例配置)
+
+```bash
+mkdir -p ~/.config/bili-sync-fav
+vim ~/.config/bili-sync-fav/config.toml
+```
+
+创建用户级service文件并写入内容
+
+```bash
+vim ~/.config/systemd/user/bili-sync-fav.service
+```
+
+```bash
+[Unit]
+Description=Run bili-sync-fav as user's service
+Documentation=https://github.com/cap153/bili-sync-fav
+
+[Service]
+Type=simple
+ExecStart=bili-sycn-fav -c /home/%u/.config/bili-sync-fav/config.toml
+Restart=no
+
+[Install]
+WantedBy=default.target
+```
+
+启动并启用service
+
+```bash
+systemctl --user daemon-reload
+systemctl --user enable --now bili-sync-fav.service
+```
+
+启用Linger，让用户服务在登出后继续运行
+
+> [!IMPORTANT]
+> 这是一个至关重要的步骤！默认情况下，用户的Systemd服务只在该用户至少有一个登录会话时才会运行。一旦您从SSH中断开连接，当前用户的所有会话都结束了，定时任务也会被停止。
+> 为了让当前用户的服务像系统服务一样7x24小时运行（即使在用户登出后），我们需要为该用户启用“Linger”（逗留）模式。
+
+```bash
+sudo loginctl enable-linger $USER
+```
+
+执行一次即可，这个设置是永久生效的。它告诉系统：“请为当前用户保持一个服务管理器实例，即使他当前没有登录。”
+
 # 参考与借鉴
 
 [cap153/fav](https://github.com/cap153/fav) 本项目依赖的核心，我fork自`kingwingfly/fav`并更改视频命名格式为`up主名称-视频标题.mp4`  
