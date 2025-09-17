@@ -155,7 +155,7 @@ bili-sycn-fav -c <配置文件>
 
 # 参考与借鉴
 
-[cap153/fav](https://github.com/kingwingfly/fav) 本项目依赖的核心，我fork自`kingwingfly/fav`并更改视频命名格式为`up主名称-视频标题.mp4`  
+[cap153/fav](https://github.com/cap153/fav) 本项目依赖的核心，我fork自`kingwingfly/fav`并更改视频命名格式为`up主名称-视频标题.mp4`  
 [kingwingfly/fav](https://github.com/kingwingfly/fav) 像使用git一样备份你的b站收藏夹视频  
 [amtoaer/bili-sync](https://github.com/amtoaer/bili-sync) 本项目灵感来源，配置文档的格式与该项目一脉相承  
 [cap153/bili-sync-yt-dlp](https://github.com/cap153/bili-sync-yt-dlp) 本项目的目的是解决该项目内存泄漏等问题  
