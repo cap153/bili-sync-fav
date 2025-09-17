@@ -178,7 +178,7 @@ Documentation=https://github.com/cap153/bili-sync-fav
 
 [Service]
 Type=simple
-ExecStart=bili-sycn-fav -c /home/%u/.config/bili-sync-fav/config.toml
+ExecStart=bili-sync-fav -c /home/%u/.config/bili-sync-fav/config.toml
 Restart=no
 
 [Install]
