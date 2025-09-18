@@ -119,7 +119,8 @@ docker run -it --restart=always --name bili-sync-fav -v <你希望存储程序�
 # 主机运行
 
 > [!IMPORTANT]
-> 如果使用debian，需要安装ffmpeg的核心库(或者直接`sudo apt install ffmpeg`安装完整的ffmpeg)
+> 如果使用debian，需要安装ffmpeg的核心库(或者直接`sudo apt install ffmpeg`安装完整的ffmpeg)  
+> 默认临时文件放在`/tmp`目录，8线程下载，如果内存比较小可以设置环境变量`TMPDIR`指定其他路径
 
 ```bash
 sudo apt install libavcodec-extra61 libavformat-extra61 libswscale8
@@ -185,6 +186,7 @@ Documentation=https://github.com/cap153/bili-sync-fav
 
 [Service]
 Type=simple
+Environment="TMPDIR=%h/.cache"
 ExecStart=%h/.local/bin/bili-sync-fav -c %h/.config/bili-sync-fav/config.toml
 Restart=no
 
